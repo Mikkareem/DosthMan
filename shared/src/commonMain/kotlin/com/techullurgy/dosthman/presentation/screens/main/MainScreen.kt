@@ -13,8 +13,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -29,14 +29,14 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.painter.Painter
-import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.techullurgy.dosthman.presentation.components.AnimatingContainer
 import com.techullurgy.dosthman.presentation.components.CreateNewRequestButton
 import com.techullurgy.dosthman.presentation.components.TabsColumn
+import com.techullurgy.dosthman.presentation.components.root.AppEditableText
 import com.techullurgy.dosthman.presentation.models.Tab
 import com.techullurgy.dosthman.presentation.models.UiContentType
 import com.techullurgy.dosthman.presentation.models.UiHttpMethod
@@ -78,6 +78,7 @@ fun MainScreen() {
 @Composable
 private fun MainScreenImpl(
     state: MainState,
+    // TODO: Change to () -> Flow<*> backed by SharedFlow, because Channel is (consumed once (or) One of the Collector receives value)
     eventFlowProvider: () -> Channel<MainEvent>,
     onAction: (MainAction) -> Unit
 ) {
@@ -97,6 +98,9 @@ private fun MainScreenImpl(
                     eventFlowProvider = eventFlowProvider,
                     onCreateNewRequestClick = { onAction(MainAction.OnCreateNewRequestTriggered) },
                     onTabSelected = { onAction(MainAction.OnTabSelected(it)) },
+                    onTabNameChanged = { id, name ->
+                        onAction(MainAction.OnTabNameChanged(id, name))
+                    }
                 )
             }
             else -> {
@@ -105,6 +109,9 @@ private fun MainScreenImpl(
                     selectedTab = state.selectedTab,
                     onCreateNewRequestClick = { onAction(MainAction.OnCreateNewRequestTriggered) },
                     onTabSelected = { onAction(MainAction.OnTabSelected(it)) },
+                    onTabNameChanged = { id, name ->
+                        onAction(MainAction.OnTabNameChanged(id, name))
+                    },
                     modifier = Modifier
                         .fillMaxSize()
                         .verticalSafeDrawingPadding()
@@ -121,6 +128,7 @@ private fun MainScreenImplSectionForMobilePortrait(
     eventFlowProvider: () -> Channel<MainEvent>,
     onCreateNewRequestClick: () -> Unit,
     onTabSelected: (String) -> Unit,
+    onTabNameChanged: (String, String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val latestEventFlowProvider by rememberUpdatedState(eventFlowProvider)
@@ -152,6 +160,7 @@ private fun MainScreenImplSectionForMobilePortrait(
                 selectedTab = selectedTab,
                 onCreateNewRequestClick = onCreateNewRequestClick,
                 onTabSelected = onTabSelected,
+                onTabNameChanged = onTabNameChanged,
                 modifier = Modifier
                     .fillMaxWidth(0.6f)
                     .fillMaxHeight()
@@ -160,7 +169,7 @@ private fun MainScreenImplSectionForMobilePortrait(
             )
         }
 
-        selectedTab?.let {
+        selectedTab?.let { tabKey ->
             AnimatingContainer(
                 isOpen = isTabsColumnOpen,
                 onIsOpenChange = { isOpen -> isTabsColumnOpen = isOpen },
@@ -172,7 +181,6 @@ private fun MainScreenImplSectionForMobilePortrait(
                     modifier = Modifier
                         .fillMaxSize()
                         .background(MaterialTheme.colorScheme.background)
-
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(16.dp),
@@ -191,16 +199,16 @@ private fun MainScreenImplSectionForMobilePortrait(
                             }
                         )
 
-                        Text(
-                            text = tabs.first { t -> t.tabId == it }.tabName,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f)
+                        AppEditableText(
+                            text = tabs.first { t -> t.tabId == tabKey }.tabName,
+                            onTextChange = { onTabNameChanged(tabKey, it) },
+                            textStyle = LocalTextStyle.current.copy(fontWeight = FontWeight.Bold),
+                            modifier = Modifier.weight(1f),
                         )
                     }
 
                     TabScreen(
-                        tabKey = it,
+                        tabKey = tabKey,
                         modifier = Modifier
                             .weight(1f)
                             .padding(16.dp)
@@ -217,6 +225,7 @@ private fun MainScreenImplSectionForDesktop(
     selectedTab: String?,
     onCreateNewRequestClick: () -> Unit,
     onTabSelected: (String) -> Unit,
+    onTabNameChanged: (String, String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Row(
@@ -227,6 +236,7 @@ private fun MainScreenImplSectionForDesktop(
             selectedTab = selectedTab,
             onCreateNewRequestClick = onCreateNewRequestClick,
             onTabSelected = onTabSelected,
+            onTabNameChanged = onTabNameChanged,
             modifier = Modifier
                 .widthIn(max = 200.dp)
                 .fillMaxHeight()
@@ -289,8 +299,8 @@ private fun MainScreenPreview() {
             MainScreenImpl(
                 state = MainState(
                     tabs = listOf(
-                        Tab("123", AnnotatedString("GET New Request"), isSavePending = false),
-                        Tab("456", AnnotatedString("POST New Request"), isSavePending = true)
+                        Tab("123", "New Request", UiHttpMethod.Get, isSavePending = false),
+                        Tab("456", "New Request", UiHttpMethod.Post, isSavePending = true)
                     ),
                     selectedTab = "123",
                     openedTabs = setOf("123")

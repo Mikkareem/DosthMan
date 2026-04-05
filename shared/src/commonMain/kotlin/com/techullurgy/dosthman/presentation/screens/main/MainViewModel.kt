@@ -2,11 +2,9 @@
 
 package com.techullurgy.dosthman.presentation.screens.main
 
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.withStyle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.techullurgy.dosthman.domain.usecases.ChangeRequestNameUsecase
 import com.techullurgy.dosthman.domain.usecases.CreateNewRequestUsecase
 import com.techullurgy.dosthman.domain.usecases.ObserveDataUsecase
 import com.techullurgy.dosthman.presentation.models.Tab
@@ -27,6 +25,7 @@ import kotlin.uuid.Uuid
 @KoinViewModel
 internal class MainViewModel(
     private val createNewRequestUsecase: CreateNewRequestUsecase,
+    private val changeRequestNameUsecase: ChangeRequestNameUsecase,
     observeDataUsecase: ObserveDataUsecase,
 ): ViewModel() {
 
@@ -40,22 +39,16 @@ internal class MainViewModel(
             .map {
                 it.map { (key, value) ->
                     val uiValue = value.toUiRequestResponse()
-                    val tabName = buildAnnotatedString {
-                        withStyle(SpanStyle(color = uiValue.request.method.color)) {
-                            append(uiValue.request.method.name.uppercase())
-                        }
-                        append(" ")
-
-                        if(uiValue.request.name != null && uiValue.request.name.isNotBlank()) {
-                            append(uiValue.request.url)
-                        } else {
-                            append(uiValue.request.url.takeIf { c -> c.isNotBlank() } ?: "New Request")
-                        }
+                    val tabName = if (!uiValue.request.name.isNullOrBlank()) {
+                        uiValue.request.name
+                    } else {
+                        uiValue.request.url.takeIf { c -> c.isNotBlank() } ?: "New Request"
                     }
 
                     Tab(
                         tabId = key,
                         tabName = tabName,
+                        method = uiValue.request.method,
                         isSavePending = uiValue.isSavePending
                     )
                 }
@@ -74,6 +67,7 @@ internal class MainViewModel(
         when (action) {
             MainAction.OnCreateNewRequestTriggered -> onCreateNewRequestTriggered()
             is MainAction.OnTabSelected -> onTabSelected(action)
+            is MainAction.OnTabNameChanged -> onTabNameChanged(action)
         }
     }
 
@@ -105,5 +99,11 @@ internal class MainViewModel(
             )
         }
         eventChannel.trySend(MainEvent.TabChangeEvent)
+    }
+
+    private fun onTabNameChanged(action: MainAction.OnTabNameChanged) {
+        viewModelScope.launch {
+            changeRequestNameUsecase(action.tabKey, action.name)
+        }
     }
 }
