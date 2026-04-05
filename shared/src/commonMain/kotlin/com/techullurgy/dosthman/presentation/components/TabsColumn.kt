@@ -1,6 +1,7 @@
 package com.techullurgy.dosthman.presentation.components
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
@@ -13,6 +14,7 @@ internal fun TabsColumn(
     selectedTab: String?,
     onCreateNewRequestClick: () -> Unit,
     onTabSelected: (String) -> Unit,
+    onTabNameChanged: (String, String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -28,9 +30,12 @@ internal fun TabsColumn(
         ) {
             tabs.forEach {
                 TabItem(
+                    method = it.method,
                     name = it.tabName,
                     isSelected = it.tabId == selectedTab,
-                    onTabSelected = { onTabSelected(it.tabId) }
+                    onTabSelected = { onTabSelected(it.tabId) },
+                    onTabNameChanged = { c -> onTabNameChanged(it.tabId, c) },
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
         }
